@@ -1,5 +1,8 @@
+//var bcrypt = require('bcrypt');
+var _ = require('underscore');
+
 module.exports = function (sequelize, DataTypes) {
-	return sequelize.define('user', {
+	var user = sequelize.define('user', {
 		email: {
 			type: DataTypes.STRING,
 			allowNull: false,
@@ -16,12 +19,44 @@ module.exports = function (sequelize, DataTypes) {
 			}
 		}
 	}, {
-		hooks: {
+			hooks: {
 				beforeValidate: function (user, options) {
 					if (typeof user.email === 'string') {
 						user.email = user.email.toLowerCase();
 					}
 				}
+			},
+			classMethods: {
+				authenticate: function (body) {
+					return new Promise(function (resolve, reject) {
+						if (typeof body.email !== 'string' || typeof body.password !== 'string') {
+							return reject();
+						}
+
+						user.findOne({
+							where: {
+								email: body.email,
+								password: body.password
+							}
+						}).then(function (user) {
+							if (!user || body.password !== user.password) {
+								return reject();
+							}
+							
+							resolve(user);
+						}, function (e) {
+							reject();
+						});
+					})
+				}
+			},
+			instanceMethods: {
+				toPublicJSON: function () {
+					var json = this.toJSON();
+					return _.pick(json, 'id', 'email', 'createdAt', 'updatedAt');
+				}
 			}
-	});
+		});
+		
+		return user;
 };
