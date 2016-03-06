@@ -18,7 +18,9 @@ app.get('/', function (req, res) {
 //GET /todos
 app.get('/todos', middleware.requireAuthentication, function (req, res) {
 	var query = req.query;
-	var where = {};
+	var where = {
+		Userid: req.user.get('id')
+	};
 
 	if (query.hasOwnProperty('completed') && query.completed === 'true') {
 		where.completed = true;
@@ -43,7 +45,12 @@ app.get('/todos', middleware.requireAuthentication, function (req, res) {
 app.get('/todos/:id', middleware.requireAuthentication, function (req, res) {
 	var todoId = parseInt(req.params.id, 10);
 
-	db.todo.findById(todoId).then(function (todo) {
+	db.todo.findOne({
+		where: {
+			id: todoId,
+			UserId: req.user.get('id')
+		}
+	}).then(function (todo) {
 		if (todo) {
 			res.json(todo.toJSON());
 		}
@@ -60,9 +67,9 @@ app.post('/todos', middleware.requireAuthentication, function (req, res) {
 	var body = _.pick(req.body, "description", "completed"); //which parameters will be posted
 	
 	db.todo.create(body).then(function (todo) {
-		req.user.addTodo(todo).then(function(){
+		req.user.addTodo(todo).then(function () {
 			return todo.reload();
-		}).then(function(todo){
+		}).then(function (todo) {
 			res.json(todo.toJSON());
 		});
 		res.json(todo.toJSON());
@@ -77,7 +84,8 @@ app.delete('/todos/:id', middleware.requireAuthentication, function (req, res) {
 
 	db.todo.destroy({
 		where: {
-			id: todoId
+			id: todoId,
+			UserId: req.user.get('id')
 		}
 	}).then(function (rowsDeleted) {
 		if (rowsDeleted === 0) {
@@ -107,7 +115,12 @@ app.put('/todos/:id', middleware.requireAuthentication, function (req, res) {
 		attributes.description = body.description;
 	}
 
-	db.todo.findById(todoId).then(function (todo) {
+	db.todo.findOne({
+		where: {
+			id: todoId,
+			UserId: req.user.get('id')
+		}
+	}).then(function (todo) {
 		if (todo) {
 			todo.update(attributes).then(function (todo) {
 				res.json(todo.toJSON())
@@ -155,7 +168,7 @@ app.post('/users/login', function (req, res) {
 
 });
 
-db.sequelize.sync({force:true}).then(function () {
+db.sequelize.sync(/*{force:true}*/).then(function () {
 	app.listen(PORT, function () {
 		console.log('Express listening on port ' + PORT + '!');
 	});
